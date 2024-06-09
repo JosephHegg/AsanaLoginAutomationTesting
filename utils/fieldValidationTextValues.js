@@ -34,3 +34,5 @@ export const SHARE_TIMELINE_TASK = "Share timeline with teammates";
 export const LAPTOP_SETUP_TASK = "[Example] Laptop setup for new hire";
 export const PASSWORD_NOT_WORKING_TASK = "[Example] Password not working";
 export const NEW_KEYCARD_DANIELA_TASK = "[Example] New keycard for Daniela V";
+
+export const ERROR_HANDLING_TEST_TEXT_FIELD = "This is to intentionally raise an error to show proper error tracking.";
