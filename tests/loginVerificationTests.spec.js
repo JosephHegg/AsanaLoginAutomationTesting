@@ -1,17 +1,18 @@
 const { test, expect } = require('@playwright/test');
 
-import {
-    testCases,
-    TEST_CASE_ID_IDENTIFIER,
-    TEST_CASE_NAME_IDENTIFIER,
-    TEST_CASE_LEFTNAV_IDENTIFIER,
-    TEST_CASE_COLUMN_IDENTIFIER,
-    TEST_CASE_TASK_CARD_TITLE_IDENTIFIER,
-    TEST_CASE_TAGS_IDENTIFIER
-}
-from '../utils/testDataBank';
+import { testCases } from '../utils/testDataBank';
 
 import * as loginCredentials from '../utils/loginCredentials';
+
+const SLOW_LOAD_TIMEOUT_TIME = 10000;
+const TAG_TEXT_TIMEOUT_TIME = 1500;
+
+const TEST_NAVIGATION_STEP = "Navigation to proper source.";
+const TEST_CARD_COLUMN_VERIFICATION = "Verifying proper card and column.";
+const TEST_TAG_VERIFICATION = "Verifying proper tags for card.";
+
+const COLUMN_CLASS_LIST_SELECTOR = ".BoardColumn.BoardBody-column";
+const TAG_CLASS_LIST_SELECTOR = ".BoardCardCustomPropertiesAndTags-tag";
 
 test.beforeEach(async ({ page }) => {
   await page.goto(loginCredentials.ASANA_LOGIN_URL);
@@ -35,24 +36,14 @@ test.afterEach(async ({ page }) => {
 
   await logOutLocator.isVisible();
   await logOutLocator.click();
-
-  console.log("Logged out.");
 });
-
-const TEST_NAVIGATION_STEP = "Navigation to proper source.";
-const TEST_CARD_COLUMN_VERIFICATION = "Verifying proper card and column.";
-const TEST_TAG_VERIFICATION = "Verifying proper tags for card.";
-
-const COLUMN_CLASS_LIST_SELECTOR = ".BoardColumn.BoardBody-column";
-const TAG_CLASS_LIST_SELECTOR = ".BoardCardCustomPropertiesAndTags-tag";
-
 
 testCases.forEach(currentTest => {
     test(currentTest.TEST_CASE_NAME_IDENTIFIER, async ({ page }) => {
       await test.step(TEST_NAVIGATION_STEP, async() => {
 
         var navigationLocator = page.getByLabel(currentTest.TEST_CASE_LEFTNAV_IDENTIFIER);
-        await expect(navigationLocator).toBeVisible();
+        await expect(navigationLocator).toBeVisible({timeout : SLOW_LOAD_TIMEOUT_TIME});
         await navigationLocator.click();
 
       });
@@ -74,34 +65,35 @@ testCases.forEach(currentTest => {
       });
       await test.step(TEST_TAG_VERIFICATION, async() => {
           var boardCardAncestor = page.locator(`[data-task-id="${currentTest.TEST_CASE_BOARD_CARD_TASK_ID}"]`);
-          await page.pause();
+        
           await expect(boardCardAncestor).toBeVisible();
 
-          for(const currentTagLocator of tagLocatorList){
-            await currentTagLocator.hover();
-            for(const currentTagText of currentTest.TEST_CASE_TAGS_IDENTIFIER){
-              try{
-                const textLocator = boardCardAncestor.locator(`text="${currentTagText}"`);
-                await expect(textLocator).toBeVisible();
-                break;
-                
-              } catch (error) {
+          var tagLocatorList = boardCardAncestor.locator(TAG_CLASS_LIST_SELECTOR).all();
 
+          for(const currentTagLocator of await tagLocatorList){
+            
+            await currentTagLocator.hover();
+            var tagTextFound = false;
+            for(const currentTagText of currentTest.TEST_CASE_TAGS_IDENTIFIER){
+
+              const tagTextLocator = page.getByText(currentTagText);              
+
+              try {
+                await expect(tagTextLocator).toBeVisible({timeout : TAG_TEXT_TIMEOUT_TIME});
+                tagTextFound = true;
+                break;
               }
-              
+              catch (error) {
+                // we only want to throw an error if all options have been attempted
+              } 
+            }
+
+            // replace test data tag entries with ERROR_HANDLING_TEST_TEXT_FIELD to raise this error. 
+            if(!tagTextFound){
+              throw Error(`There was no tag discovered with text from the acceptable tags list: ${currentTest.TEST_CASE_TAGS_IDENTIFIER.join(' | ')}.`);
             }
           }
 
       });
     })
-    return;
-})
-
-async function compareLocators(firstLocator, secondLocator) {
-  const firstHandle = await firstLocator.elementHandle();
-  const secondHandle = await secondLocator.elementHandle();
-  firstLocator.page().evaluate(
-      compare => compare.left.isEqualNode(compare.right),
-      { left: firstHandle, right: secondHandle }
-  );
-}
+});
