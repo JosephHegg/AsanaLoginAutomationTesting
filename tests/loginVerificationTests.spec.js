@@ -13,6 +13,7 @@ const TEST_TAG_VERIFICATION = "Verifying proper tags for card.";
 
 const COLUMN_CLASS_LIST_SELECTOR = ".BoardColumn.BoardBody-column";
 const TAG_CLASS_LIST_SELECTOR = ".BoardCardCustomPropertiesAndTags-tag";
+const TAG_CONTENT_CLASS_SELECTOR = ".TooltipPresentation-body";
 
 test.beforeEach(async ({ page }) => {
   await page.goto(loginCredentials.ASANA_LOGIN_URL);
@@ -34,7 +35,7 @@ test.afterEach(async ({ page }) => {
 
   const logOutLocator = page.getByText(LOG_OUT_MESSAGE);
 
-  await logOutLocator.isVisible();
+  await expect(logOutLocator).toBeVisible();
   await logOutLocator.click();
 });
 
@@ -71,12 +72,13 @@ testCases.forEach(currentTest => {
           var tagLocatorList = boardCardAncestor.locator(TAG_CLASS_LIST_SELECTOR).all();
 
           for(const currentTagLocator of await tagLocatorList){
-            
+            await page.pause();
             await currentTagLocator.hover();
             var tagTextFound = false;
             for(const currentTagText of currentTest.TEST_CASE_TAGS_IDENTIFIER){
 
-              const tagTextLocator = page.getByText(currentTagText);              
+              // the tag text is NOT a child of the card.
+              const tagTextLocator = page.getByRole("tooltip").locator(` > ${TAG_CONTENT_CLASS_SELECTOR}`, {name: currentTagText, exact: true});              
 
               try {
                 await expect(tagTextLocator).toBeVisible({timeout : TAG_TEXT_TIMEOUT_TIME});
